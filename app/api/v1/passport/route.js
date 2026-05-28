@@ -25,7 +25,7 @@ export async function GET(request) {
   // Visa data আনো
   const visaDoc = await db
     .collection("passport-index-matrix")
-    .findOne({ Passport: from });
+    .findOne({ Passport: { $regex: new RegExp(`^${from}$`, "i") } });
 
   if (!visaDoc) {
     return NextResponse.json({ error: `Passport '${from}' not found` }, { status: 404 });
@@ -41,18 +41,24 @@ export async function GET(request) {
   const { _id, Passport, ...destinations } = visaDoc;
 
   // নির্দিষ্ট destination
-  if (to) {
-    const status = destinations[to];
+if (to) {
+    // Case insensitive destination match
+    const toKey = Object.keys(destinations).find(
+      k => k.toLowerCase() === to.toLowerCase()
+    );
+    const status = toKey ? destinations[toKey] : undefined;
+    const toName = toKey || to;
+
     if (status === undefined) {
       return NextResponse.json({ error: `Destination '${to}' not found` }, { status: 404 });
     }
     const fromInfo = flagMap[from.toLowerCase()];
-    const toInfo   = flagMap[to.toLowerCase()];
+    const toInfo   = flagMap[toName.toLowerCase()];
 
     return NextResponse.json(
       {
         from:        { name: from, flag: fromInfo?.flag, code: fromInfo?.code },
-        to:          { name: to,   flag: toInfo?.flag,   code: toInfo?.code },
+        to:          { name: toName, flag: toInfo?.flag, code: toInfo?.code },
         visa_status: status === -1 ? "not_applicable" : status,
       },
       {
