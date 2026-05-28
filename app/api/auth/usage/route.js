@@ -4,11 +4,13 @@ import { hashKey } from "@/lib/apiKey";
 import { PLANS } from "@/lib/rateLimit";
 
 export async function GET(request) {
+  let apiKey = null;
+try {
   const url = new URL(request.url);
-  const apiKey = request.headers.get("x-api-key") || url.searchParams.get("api_key");
-  if (!apiKey) {
-    return NextResponse.json({ error: "x-api-key header required" }, { status: 401 });
-  }
+  apiKey = request.headers.get("x-api-key") || url.searchParams.get("api_key");
+} catch {
+  apiKey = request.headers.get("x-api-key") || null;
+}
 
   const db   = await getDb();
   const user = await db
