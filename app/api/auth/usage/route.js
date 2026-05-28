@@ -4,7 +4,8 @@ import { hashKey } from "@/lib/apiKey";
 import { PLANS } from "@/lib/rateLimit";
 
 export async function GET(request) {
-  const apiKey = request.headers.get("x-api-key");
+  const url = new URL(request.url);
+  const apiKey = request.headers.get("x-api-key") || url.searchParams.get("api_key");
   if (!apiKey) {
     return NextResponse.json({ error: "x-api-key header required" }, { status: 401 });
   }
