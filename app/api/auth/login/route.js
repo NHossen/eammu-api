@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/mongodb";
 import { Resend } from "resend";
 
+// GET request এলে redirect করো
+export async function GET() {
+  return NextResponse.json(
+    { error: "Use POST method. Example: POST /api/auth/login with {email}" },
+    { status: 405 }
+  );
+}
+
 export async function POST(request) {
   const { email } = await request.json();
 
@@ -22,7 +30,7 @@ export async function POST(request) {
   try {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: "Eammu API <noreply@eammu.com>",
       to: email,
       subject: "Your Eammu API Key Info",
@@ -50,10 +58,12 @@ export async function POST(request) {
       `,
     });
 
+    console.log("Resend result:", JSON.stringify(result));
+
     return NextResponse.json({ success: true });
 
   } catch (err) {
-    console.error("Email error:", err);
-    return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
+    console.error("Email error:", err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
