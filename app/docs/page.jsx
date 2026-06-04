@@ -4,48 +4,102 @@ import Link from "next/link";
 
 const BASE_URL = "https://api.eammu.com";
 
-const endpoints = [
-  {
-    id: "passport",
-    method: "GET",
-    path: "/api/v1/passport",
-    color: "#00E5A0",
-    badge: "TRAVEL",
-    desc: "Get visa requirements for a passport holder. Returns visa status, entry type, and country flags for any origin → destination pair.",
-    params: [
-      { name: "from", type: "string", required: true,  desc: "Passport country. Example: Bangladesh" },
-      { name: "to",   type: "string", required: false, desc: "Destination country. Omit to get all destinations grouped by visa type." },
-      { name: "api_key", type: "string", required: true, desc: "Your API key (or use x-api-key header)" },
-    ],
-    playground: { from: "Bangladesh", to: "Japan" },
-    examples: [
-      { label: "Single destination", url: `/api/v1/passport?from=Bangladesh&to=Japan&api_key=YOUR_KEY` },
-      { label: "All destinations",   url: `/api/v1/passport?from=Bangladesh&api_key=YOUR_KEY` },
-    ],
-    response: `{
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────────────────────────────────────────
+
+const passportEndpoint = {
+  id: "passport",
+  method: "GET",
+  path: "/api/v1/passport",
+  color: "#00E5A0",
+  badge: "TRAVEL",
+  desc: "Core travel intelligence endpoint. Pass a passport country to get visa requirements for all destinations — or add ?to= for a single pair. The response includes a visa_guide_url field that points to the relevant visa-guides page, and a full grouped summary when no destination is specified.",
+  params: [
+    { name: "from",    type: "string", required: true,  desc: "Passport (origin) country name. Example: Bangladesh" },
+    { name: "to",      type: "string", required: false, desc: "Destination country name. Omit to receive all destinations grouped by visa type." },
+    { name: "api_key", type: "string", required: true,  desc: "Your API key. Can also be passed via x-api-key header." },
+  ],
+  playground: { from: "Bangladesh", to: "Japan" },
+  examples: [
+    { label: "Single destination",  url: `/api/v1/passport?from=Bangladesh&to=Japan&api_key=YOUR_KEY` },
+    { label: "All destinations",    url: `/api/v1/passport?from=Bangladesh&api_key=YOUR_KEY` },
+  ],
+  responseSingle: `// Single destination — GET /api/v1/passport?from=Bangladesh&to=Turkey
+{
   "from": {
     "name": "Bangladesh",
     "flag": "https://twemoji.maxcdn.com/2/svg/1f1e7-1f1e9.svg",
     "code": "bd"
   },
   "to": {
-    "name": "Japan",
-    "flag": "https://twemoji.maxcdn.com/2/svg/1f1ef-1f1f5.svg",
-    "code": "jp"
+    "name": "Turkey",
+    "flag": "https://twemoji.maxcdn.com/2/svg/1f1f9-1f1f7.svg",
+    "code": "tr"
   },
-  "visa_status": "visa required"
+  "visa_status": "e-visa",
+  "visa_guide_url": "https://api.eammu.com/api/v1/visa-guides/e-visa"
 }`,
+  responseAll: `// All destinations — GET /api/v1/passport?from=Bangladesh
+{
+  "passport": "Bangladesh",
+  "flag": "https://twemoji.maxcdn.com/2/svg/1f1e7-1f1e9.svg",
+  "total": 195,
+  "summary": {
+    "visa_free":       41,
+    "visa_on_arrival": 27,
+    "e_visa":          12,
+    "eta":              3,
+    "visa_required":   98,
+    "no_admission":     2
   },
+  "visa_guides": {
+    "visa_required":   "https://api.eammu.com/api/v1/visa-guides/visa-required",
+    "e_visa":          "https://api.eammu.com/api/v1/visa-guides/e-visa",
+    "visa_on_arrival": "https://api.eammu.com/api/v1/visa-guides/visa-on-arrival",
+    "eta":             "https://api.eammu.com/api/v1/visa-guides/eta",
+    "visa_free":       "https://api.eammu.com/api/v1/visa-guides/visa-free",
+    "no_admission":    "https://api.eammu.com/api/v1/visa-guides/no-admission"
+  },
+  "destinations": {
+    "visa_free": [
+      {
+        "country": "Haiti",
+        "flag": "https://twemoji.maxcdn.com/2/svg/1f1ed-1f1f9.svg",
+        "code": "ht",
+        "visa_status": 90,
+        "visa_guide_url": null
+      }
+    ],
+    "e_visa": [
+      {
+        "country": "Turkey",
+        "flag": "https://twemoji.maxcdn.com/2/svg/1f1f9-1f1f7.svg",
+        "code": "tr",
+        "visa_status": "e-visa",
+        "visa_guide_url": "https://api.eammu.com/api/v1/visa-guides/e-visa"
+      }
+    ],
+    "visa_required": [ "..." ],
+    "visa_on_arrival": [ "..." ],
+    "eta": [ "..." ],
+    "no_admission": [ "..." ],
+    "not_applicable": [ "..." ]
+  }
+}`,
+};
+
+const otherEndpoints = [
   {
     id: "countries",
     method: "GET",
     path: "/api/v1/countries",
     color: "#00C2FF",
     badge: "DATA",
-    desc: "Get a full list of countries with flags, ISO codes, and names. Supports partial name search and code filtering.",
+    desc: "Get a full list of countries with flags and ISO codes. Supports partial name search and code filtering.",
     params: [
-      { name: "name",    type: "string", required: false, desc: "Filter by country name (partial, case-insensitive). Example: bang" },
-      { name: "code",    type: "string", required: false, desc: "Filter by ISO 2-letter code. Example: bd" },
+      { name: "name",    type: "string", required: false, desc: "Partial country name, case-insensitive. Example: bang" },
+      { name: "code",    type: "string", required: false, desc: "ISO 2-letter code. Example: bd" },
       { name: "api_key", type: "string", required: true,  desc: "Your API key" },
     ],
     playground: { name: "Bangladesh" },
@@ -71,7 +125,7 @@ const endpoints = [
     path: "/api/v1/embassies",
     color: "#FF6B35",
     badge: "LOCATION",
-    desc: "Find embassy and consulate locations worldwide. Filter by operator country, host country, or city. Returns coordinates, website, and type.",
+    desc: "Find embassy and consulate locations worldwide. Filter by operator country, host country, or city.",
     params: [
       { name: "operator", type: "string", required: false, desc: "Embassy home country. Example: Bangladesh" },
       { name: "country",  type: "string", required: false, desc: "Country where embassy is located. Example: Japan" },
@@ -82,7 +136,7 @@ const endpoints = [
     examples: [
       { label: "Bangladesh embassies abroad", url: `/api/v1/embassies?operator=Bangladesh&api_key=YOUR_KEY` },
       { label: "Embassies in Japan",          url: `/api/v1/embassies?country=Japan&api_key=YOUR_KEY` },
-      { label: "By city",                     url: `/api/v1/embassies?city=Tokyo&api_key=YOUR_KEY` },
+      { label: "Filter by city",              url: `/api/v1/embassies?city=Tokyo&api_key=YOUR_KEY` },
     ],
     response: `{
   "total": 1,
@@ -109,14 +163,14 @@ const endpoints = [
     params: [
       { name: "country", type: "string", required: false, desc: "Filter by country name. Example: Bangladesh" },
       { name: "city",    type: "string", required: false, desc: "Filter by city. Example: Dhaka" },
-      { name: "code",    type: "string", required: false, desc: "IATA airport code. Example: DAC" },
+      { name: "code",    type: "string", required: false, desc: "IATA code. Example: DAC" },
       { name: "api_key", type: "string", required: true,  desc: "Your API key" },
     ],
     playground: { code: "DAC" },
     examples: [
-      { label: "By IATA code",    url: `/api/v1/airports?code=DAC&api_key=YOUR_KEY` },
-      { label: "By country",      url: `/api/v1/airports?country=Bangladesh&api_key=YOUR_KEY` },
-      { label: "By city",         url: `/api/v1/airports?city=Dhaka&api_key=YOUR_KEY` },
+      { label: "By IATA code", url: `/api/v1/airports?code=DAC&api_key=YOUR_KEY` },
+      { label: "By country",   url: `/api/v1/airports?country=Bangladesh&api_key=YOUR_KEY` },
+      { label: "By city",      url: `/api/v1/airports?city=Dhaka&api_key=YOUR_KEY` },
     ],
     response: `{
   "total": 1,
@@ -141,9 +195,9 @@ const endpoints = [
     path: "/api/v1/suggest",
     color: "#FEBC2E",
     badge: "UTILITY",
-    desc: "Autocomplete country names with flags and ISO codes. Useful for building search inputs and dropdowns in your app.",
+    desc: "Autocomplete country names with flags and ISO codes. Ideal for search inputs and dropdowns.",
     params: [
-      { name: "q",       type: "string", required: true, desc: "Search query (minimum 1 character). Example: ban" },
+      { name: "q",       type: "string", required: true, desc: "Search query (min 1 character). Example: ban" },
       { name: "api_key", type: "string", required: true, desc: "Your API key" },
     ],
     playground: { q: "ban" },
@@ -168,39 +222,280 @@ const endpoints = [
   },
 ];
 
+// Visa-guide static info pages — no params, just static JSON
+const visaGuidePages = [
+  {
+    id: "vg-e-visa",
+    path: "/api/v1/visa-guides/e-visa",
+    color: "#00C2FF",
+    label: "E-Visa",
+    icon: "💻",
+    triggeredBy: "e-visa",
+    desc: "Static guide page returned when a passport holder's visa_status is e-visa. Explains what e-visa is, requirements, step-by-step application process, typical fees, and processing time.",
+    response: `{
+  "visa_type":       "e-visa",
+  "label":           "E-Visa",
+  "color":           "#00C2FF",
+  "description":     "Apply online before travel. No embassy visit required.",
+  "requirements": [
+    "Valid passport (minimum 6 months validity)",
+    "Digital passport photo (JPEG, white background, under 1MB)",
+    "Valid email address for confirmation",
+    "Credit or debit card for online payment",
+    "Return or onward flight ticket",
+    "Hotel booking confirmation",
+    "Proof of sufficient funds"
+  ],
+  "steps": [
+    "Visit the official e-visa portal of your destination country.",
+    "Create an account or proceed as a guest applicant.",
+    "Fill out the online application form.",
+    "Upload required documents.",
+    "Pay the e-visa fee online.",
+    "Wait for approval email (usually 24–72 hours).",
+    "Download and print your e-visa approval letter.",
+    "Present the printed e-visa at the port of entry."
+  ],
+  "fee":             "USD 20–80 (varies by country and nationality)",
+  "processing_time": "24–72 hours (some instant approvals)",
+  "validity":        "Usually 30–90 days from approval date",
+  "tips": [
+    "Only apply through the official government portal.",
+    "Apply at least 72 hours before your travel date.",
+    "Print multiple copies of your e-visa approval.",
+    "Check if your nationality is eligible before applying."
+  ],
+  "related_links": {
+    "check_passport":  "https://api.eammu.com/api/v1/passport",
+    "country_details": "https://api.eammu.com/api/v1/countries"
+  }
+}`,
+  },
+  {
+    id: "vg-eta",
+    path: "/api/v1/visa-guides/eta",
+    color: "#A855F7",
+    label: "ETA",
+    icon: "📋",
+    triggeredBy: "eta",
+    desc: "Static guide returned when visa_status is eta. Covers Electronic Travel Authorization requirements, how to apply, validity, and which countries require it.",
+    response: `{
+  "visa_type":       "eta",
+  "label":           "Electronic Travel Authorization",
+  "color":           "#A855F7",
+  "description":     "An ETA is an electronic entry requirement linked to your passport. Must be obtained before boarding.",
+  "requirements": [
+    "Valid passport (min 6 months validity)",
+    "Valid email address",
+    "Credit or debit card",
+    "Return flight ticket"
+  ],
+  "steps": [
+    "Go to the official ETA portal of the destination country.",
+    "Enter your passport details and travel dates.",
+    "Pay the ETA fee.",
+    "Receive approval by email (usually within minutes).",
+    "ETA is linked electronically — no printout required in most cases."
+  ],
+  "fee":             "USD 7–30 (varies by country)",
+  "processing_time": "Minutes to 72 hours",
+  "validity":        "Usually 1–5 years or multiple trips",
+  "tips": [
+    "Apply well in advance — some processing can take up to 72 hours.",
+    "ETA is linked to your passport number, so carry the same passport you applied with.",
+    "Confirm ETA eligibility for your specific nationality."
+  ],
+  "related_links": {
+    "check_passport":  "https://api.eammu.com/api/v1/passport",
+    "country_details": "https://api.eammu.com/api/v1/countries"
+  }
+}`,
+  },
+  {
+    id: "vg-visa-on-arrival",
+    path: "/api/v1/visa-guides/visa-on-arrival",
+    color: "#00E5A0",
+    label: "Visa on Arrival",
+    icon: "✅",
+    triggeredBy: "visa on arrival",
+    desc: "Static guide for visa-on-arrival destinations. Explains what to bring to the port of entry, fees to expect, and tips to avoid delays.",
+    response: `{
+  "visa_type":       "visa on arrival",
+  "label":           "Visa on Arrival",
+  "color":           "#00E5A0",
+  "description":     "Get your visa stamp at the airport or border crossing upon arrival. No advance application required.",
+  "requirements": [
+    "Valid passport (min 6 months validity)",
+    "Passport-size photo (usually 1–2 copies)",
+    "Completed arrival card (available on plane or at border)",
+    "Cash for visa fee (USD usually accepted)",
+    "Return or onward ticket",
+    "Proof of accommodation"
+  ],
+  "steps": [
+    "Arrive at the port of entry.",
+    "Proceed to the Visa on Arrival counter.",
+    "Submit your passport, photo, and arrival card.",
+    "Pay the visa fee in cash.",
+    "Receive your visa stamp and proceed to immigration."
+  ],
+  "fee":             "USD 20–60 (varies by country)",
+  "processing_time": "10–30 minutes at the counter",
+  "validity":        "Usually 14–30 days",
+  "tips": [
+    "Carry exact change in USD — not all counters give change.",
+    "Queues can be long; arrive early or use priority lanes.",
+    "Some countries require a separate arrival card — fill it out on the plane."
+  ],
+  "related_links": {
+    "check_passport":  "https://api.eammu.com/api/v1/passport",
+    "country_details": "https://api.eammu.com/api/v1/countries"
+  }
+}`,
+  },
+  {
+    id: "vg-no-admission",
+    path: "/api/v1/visa-guides/no-admission",
+    color: "#FF3B5C",
+    label: "No Admission",
+    icon: "🚫",
+    triggeredBy: "no admission",
+    desc: "Static guide returned when entry is not permitted. Explains what no-admission means, why it occurs, and what alternatives may exist.",
+    response: `{
+  "visa_type":    "no admission",
+  "label":        "No Admission",
+  "color":        "#FF3B5C",
+  "description":  "Entry to this country is not permitted for your passport. This may be due to diplomatic restrictions or bilateral agreements.",
+  "reasons": [
+    "Absence of diplomatic relations between the two countries.",
+    "Active travel ban or sanction.",
+    "Bilateral travel restriction agreement."
+  ],
+  "alternatives": [
+    "Check if entry is possible via a third country or special permit.",
+    "Contact the destination country's embassy for exceptions.",
+    "Consult your country's foreign affairs ministry for guidance."
+  ],
+  "tips": [
+    "This restriction is at the country level — individual circumstances rarely override it.",
+    "Attempting to enter may result in deportation and future travel bans.",
+    "Restrictions can change — verify with official sources before planning."
+  ],
+  "related_links": {
+    "check_passport":  "https://api.eammu.com/api/v1/passport",
+    "embassy_lookup":  "https://api.eammu.com/api/v1/embassies"
+  }
+}`,
+  },
+  {
+    id: "vg-visa-free",
+    path: "/api/v1/visa-guides/visa-free",
+    color: "#FEBC2E",
+    label: "Visa Free",
+    icon: "🆓",
+    triggeredBy: "number (e.g. 30, 90)",
+    desc: "Static guide for visa-free travel. Explains what visa-free access means, common stay limits, and what travelers still need to carry.",
+    response: `{
+  "visa_type":       "visa_free",
+  "label":           "Visa Free",
+  "color":           "#FEBC2E",
+  "description":     "No visa required. You can enter and stay for the permitted number of days without any prior application.",
+  "requirements": [
+    "Valid passport (min 6 months validity beyond your stay)",
+    "Return or onward flight ticket",
+    "Proof of sufficient funds",
+    "Hotel booking or proof of accommodation"
+  ],
+  "steps": [
+    "Arrive at the destination country's port of entry.",
+    "Proceed to immigration with your passport.",
+    "Present your return ticket and accommodation proof if asked.",
+    "Receive your entry stamp and note the permitted stay duration."
+  ],
+  "tips": [
+    "Visa-free does not mean unlimited stay — respect the max days allowed.",
+    "Overstaying can result in fines, deportation, or future bans.",
+    "Some countries grant visa-free access but still require travel insurance."
+  ],
+  "related_links": {
+    "check_passport":  "https://api.eammu.com/api/v1/passport",
+    "country_details": "https://api.eammu.com/api/v1/countries"
+  }
+}`,
+  },
+  {
+    id: "vg-visa-required",
+    path: "/api/v1/visa-guides/visa-required",
+    color: "#FF6B35",
+    label: "Visa Required",
+    icon: "🔴",
+    triggeredBy: "visa required",
+    desc: "Static guide for visa-required destinations. Covers embassy application steps, document checklist, and typical processing times.",
+    response: `{
+  "visa_type":       "visa required",
+  "label":           "Visa Required",
+  "color":           "#FF6B35",
+  "description":     "You must obtain a visa from the destination country's embassy or consulate before travel.",
+  "requirements": [
+    "Valid passport (min 6 months validity)",
+    "Completed visa application form",
+    "Recent passport-size photographs",
+    "Bank statements (last 3–6 months)",
+    "Confirmed flight itinerary",
+    "Hotel booking or invitation letter",
+    "Travel insurance (some countries require it)",
+    "Visa fee payment receipt"
+  ],
+  "steps": [
+    "Locate the nearest embassy or consulate of your destination country.",
+    "Download and complete the official visa application form.",
+    "Gather all required supporting documents.",
+    "Book an appointment at the embassy (if required).",
+    "Submit your application and pay the visa fee.",
+    "Wait for processing (typically 5–15 business days).",
+    "Collect your passport with visa stamp or denial letter.",
+    "Travel within the visa validity period."
+  ],
+  "fee":             "USD 30–200 (varies by country and visa type)",
+  "processing_time": "5–15 business days",
+  "validity":        "Varies — typically 30–180 days",
+  "tips": [
+    "Apply well in advance — at least 4–6 weeks before travel.",
+    "Double-check document requirements on the official embassy website.",
+    "Use the embassy locator to find the nearest office.",
+    "Some countries offer express processing for an additional fee."
+  ],
+  "related_links": {
+    "check_passport":  "https://api.eammu.com/api/v1/passport",
+    "embassy_lookup":  "https://api.eammu.com/api/v1/embassies"
+  }
+}`,
+  },
+];
+
 const visaStatuses = [
-  { value: "visa required",   color: "#FF6B35", icon: "🔴", desc: "Must apply for visa before travel at embassy or consulate" },
-  { value: "e-visa",          color: "#00C2FF", icon: "💻", desc: "Apply online before travel. No embassy visit needed" },
-  { value: "visa on arrival", color: "#00E5A0", icon: "✅", desc: "Get visa at the port of entry. May require fee" },
-  { value: "eta",             color: "#A855F7", icon: "📋", desc: "Electronic Travel Authorization required before boarding" },
+  { value: "visa required",   color: "#FF6B35", icon: "🔴", desc: "Must apply at embassy/consulate before travel" },
+  { value: "e-visa",          color: "#00C2FF", icon: "💻", desc: "Apply online before travel — no embassy visit needed" },
+  { value: "visa on arrival", color: "#00E5A0", icon: "✅", desc: "Obtain visa at port of entry on arrival" },
+  { value: "eta",             color: "#A855F7", icon: "📋", desc: "Electronic Travel Authorization — apply online before boarding" },
   { value: "no admission",    color: "#FF3B5C", icon: "🚫", desc: "Entry not permitted for this passport" },
-  { value: "90 (number)",     color: "#FEBC2E", icon: "🆓", desc: "Visa-free entry for the given number of days" },
+  { value: "30 / 60 / 90…",  color: "#FEBC2E", icon: "🆓", desc: "Visa-free — number indicates max stay in days" },
   { value: "not_applicable",  color: "#8A9BB0", icon: "➖", desc: "Same country or special territory — not applicable" },
 ];
 
 const codeExamples = {
-  curl: (ep) => `curl "${BASE_URL}${ep.examples[0].url.replace("YOUR_KEY", "eak_your_key")}"`,
-  js: (ep) => `const res = await fetch(
-  "${BASE_URL}${ep.examples[0].url.replace("YOUR_KEY", "eak_your_key")}"
-);
-const data = await res.json();
-console.log(data);`,
-  python: (ep) => `import requests
-
-res = requests.get(
-  "${BASE_URL}${ep.examples[0].url.replace("YOUR_KEY", "eak_your_key")}"
-)
-print(res.json())`,
-  php: (ep) => `$response = file_get_contents(
-  "${BASE_URL}${ep.examples[0].url.replace("YOUR_KEY", "eak_your_key")}"
-);
-$data = json_decode($response, true);
-print_r($data);`,
+  curl:   (path, qs) => `curl "${BASE_URL}${path}?${qs}"`,
+  js:     (path, qs) => `const res = await fetch(\n  "${BASE_URL}${path}?${qs}"\n);\nconst data = await res.json();\nconsole.log(data);`,
+  python: (path, qs) => `import requests\n\nres = requests.get(\n  "${BASE_URL}${path}?${qs}"\n)\nprint(res.json())`,
+  php:    (path, qs) => `$response = file_get_contents(\n  "${BASE_URL}${path}?${qs}"\n);\n$data = json_decode($response, true);\nprint_r($data);`,
 };
 
-// ─── Playground Component ──────────────────────────────────────────────────
-function Playground({ ep }) {
-  const [params, setParams]   = useState(ep.playground || {});
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Playground({ path, params, playground, color }) {
+  const [values, setValues]   = useState(playground || {});
   const [apiKey, setApiKey]   = useState("");
   const [response, setResp]   = useState(null);
   const [loading, setLoading] = useState(false);
@@ -210,8 +505,8 @@ function Playground({ ep }) {
   async function run() {
     if (!apiKey) { setResp({ error: "Enter your API key to test" }); return; }
     setLoading(true); setResp(null);
-    const qs = new URLSearchParams({ ...params, api_key: apiKey }).toString();
-    const url = `${BASE_URL}${ep.path}?${qs}`;
+    const qs  = new URLSearchParams({ ...values, api_key: apiKey }).toString();
+    const url = `${BASE_URL}${path}?${qs}`;
     const t0  = Date.now();
     try {
       const res  = await fetch(url);
@@ -225,95 +520,58 @@ function Playground({ ep }) {
     setLoading(false);
   }
 
-  const nonKeyParams = ep.params.filter(p => p.name !== "api_key");
+  const nonKeyParams = params.filter(p => p.name !== "api_key");
 
   return (
-    <div style={{
-      background: "#080C10", border: "1px solid rgba(255,255,255,0.08)",
-      borderRadius: 10, overflow: "hidden", marginTop: 24,
-    }}>
-      <div style={{
-        padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-      }}>
-        <span style={{ fontSize: 11, color: "#8A9BB0", letterSpacing: "0.08em" }}>
-          ▶ LIVE PLAYGROUND
-        </span>
+    <div className="mt-6 rounded-xl overflow-hidden border border-white/8 bg-[#080C10]">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-white/6">
+        <span className="text-[11px] text-[#8A9BB0] tracking-widest font-mono">▶ LIVE PLAYGROUND</span>
         {status && (
-          <span style={{
-            fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4,
-            background: status === 200 ? "rgba(0,229,160,0.1)" : "rgba(255,107,53,0.1)",
-            color: status === 200 ? "#00E5A0" : "#FF6B35",
-            border: `1px solid ${status === 200 ? "rgba(0,229,160,0.2)" : "rgba(255,107,53,0.2)"}`,
-          }}>
+          <span className={`text-[11px] font-bold px-2 py-1 rounded font-mono border ${
+            status === 200
+              ? "bg-[#00E5A0]/10 text-[#00E5A0] border-[#00E5A0]/20"
+              : "bg-[#FF6B35]/10 text-[#FF6B35] border-[#FF6B35]/20"
+          }`}>
             {status} · {time}ms
           </span>
         )}
       </div>
-
-      <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-        {/* API Key */}
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 11, color: "#FF6B35", minWidth: 70, letterSpacing: "0.04em" }}>api_key</span>
+      <div className="p-4 flex flex-col gap-3">
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-[#FF6B35] w-20 shrink-0 font-mono tracking-wider">api_key</span>
           <input
             type="password"
             placeholder="eak_your_api_key"
             value={apiKey}
             onChange={e => setApiKey(e.target.value)}
-            style={{
-              flex: 1, padding: "7px 12px", borderRadius: 6,
-              background: "#0D1117", border: "1px solid rgba(255,107,53,0.2)",
-              color: "#E8EDF2", fontSize: 12, outline: "none",
-              fontFamily: "'Courier New', monospace",
-            }}
+            className="flex-1 px-3 py-2 rounded-md bg-[#0D1117] border border-[#FF6B35]/20 text-[#E8EDF2] text-xs font-mono outline-none focus:border-[#00E5A0]/40 transition-colors"
           />
         </div>
-
-        {/* Params */}
         {nonKeyParams.map(p => (
-          <div key={p.name} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{
-              fontSize: 11, minWidth: 70, letterSpacing: "0.04em",
-              color: p.required ? ep.color : "#8A9BB0",
-            }}>{p.name}</span>
+          <div key={p.name} className="flex items-center gap-3">
+            <span className="text-[11px] w-20 shrink-0 font-mono tracking-wider" style={{ color: p.required ? color : "#8A9BB0" }}>
+              {p.name}
+            </span>
             <input
               placeholder={p.desc.split(".")[0]}
-              value={params[p.name] || ""}
-              onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.value }))}
-              style={{
-                flex: 1, padding: "7px 12px", borderRadius: 6,
-                background: "#0D1117", border: `1px solid rgba(255,255,255,0.08)`,
-                color: "#E8EDF2", fontSize: 12, outline: "none",
-                fontFamily: "'Courier New', monospace",
-              }}
+              value={values[p.name] || ""}
+              onChange={e => setValues(prev => ({ ...prev, [p.name]: e.target.value }))}
+              className="flex-1 px-3 py-2 rounded-md bg-[#0D1117] border border-white/8 text-[#E8EDF2] text-xs font-mono outline-none focus:border-[#00E5A0]/40 transition-colors"
             />
           </div>
         ))}
-
         <button
           onClick={run}
           disabled={loading}
-          style={{
-            padding: "9px 20px", borderRadius: 6, border: "none",
-            background: loading ? `${ep.color}50` : ep.color,
-            color: "#080C10", fontSize: 12, fontWeight: 700,
-            cursor: loading ? "not-allowed" : "pointer",
-            alignSelf: "flex-start", fontFamily: "inherit",
-            marginTop: 4,
-          }}
+          className="self-start mt-1 px-5 py-2 rounded-md text-xs font-bold text-[#080C10] font-mono"
+          style={{ background: loading ? `${color}80` : color, cursor: loading ? "not-allowed" : "pointer" }}
         >
           {loading ? "Running..." : "▶ Send Request"}
         </button>
       </div>
-
       {response && (
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <pre style={{
-            padding: 16, margin: 0,
-            fontSize: 12, color: "#A8B8CC",
-            overflowX: "auto", lineHeight: 1.8,
-            maxHeight: 320, overflowY: "auto",
-          }}>
+        <div className="border-t border-white/6">
+          <pre className="p-4 m-0 text-xs text-[#A8B8CC] font-mono overflow-x-auto leading-relaxed max-h-80 overflow-y-auto">
             {JSON.stringify(response, null, 2)}
           </pre>
         </div>
@@ -322,70 +580,101 @@ function Playground({ ep }) {
   );
 }
 
-// ─── Code Tabs ─────────────────────────────────────────────────────────────
-function CodeBlock({ ep }) {
-  const [lang, setLang] = useState("curl");
+function CodeBlock({ path, qs, color }) {
+  const [lang, setLang]     = useState("curl");
   const [copied, setCopied] = useState(false);
   const langs = ["curl", "js", "python", "php"];
 
   function copy() {
-    navigator.clipboard.writeText(codeExamples[lang](ep));
+    navigator.clipboard.writeText(codeExamples[lang](path, qs));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
   return (
-    <div style={{
-      background: "#0D1117", border: "1px solid rgba(255,255,255,0.06)",
-      borderRadius: 8, overflow: "hidden",
-    }}>
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 16px", borderBottom: "1px solid rgba(255,255,255,0.06)",
-      }}>
-        <div style={{ display: "flex" }}>
+    <div className="rounded-lg overflow-hidden border border-white/6 bg-[#0D1117]">
+      <div className="flex items-center justify-between border-b border-white/6">
+        <div className="flex">
           {langs.map(l => (
-            <button key={l} onClick={() => setLang(l)} style={{
-              padding: "10px 14px", border: "none", background: "transparent",
-              fontSize: 11, fontFamily: "inherit", cursor: "pointer",
-              color: lang === l ? "#E8EDF2" : "#8A9BB0",
-              borderBottom: lang === l ? `2px solid ${ep.color}` : "2px solid transparent",
-              letterSpacing: "0.04em",
-            }}>{l.toUpperCase()}</button>
+            <button key={l} onClick={() => setLang(l)}
+              className="px-4 py-2.5 text-[11px] font-mono tracking-wider border-none bg-transparent cursor-pointer transition-colors"
+              style={{ color: lang === l ? "#E8EDF2" : "#8A9BB0", borderBottom: lang === l ? `2px solid ${color}` : "2px solid transparent" }}>
+              {l.toUpperCase()}
+            </button>
           ))}
         </div>
-        <button onClick={copy} style={{
-          background: "none", border: "none", color: copied ? "#00E5A0" : "#8A9BB0",
-          cursor: "pointer", fontSize: 11, fontFamily: "inherit",
-        }}>
+        <button onClick={copy} className="mr-4 text-[11px] font-mono bg-transparent border-none cursor-pointer"
+          style={{ color: copied ? "#00E5A0" : "#8A9BB0" }}>
           {copied ? "✓ Copied" : "Copy"}
         </button>
       </div>
-      <pre style={{
-        padding: "16px", margin: 0,
-        fontSize: 12, color: "#00E5A0",
-        overflowX: "auto", lineHeight: 1.8,
-      }}>
-        {codeExamples[lang](ep)}
+      <pre className="p-4 m-0 text-xs font-mono overflow-x-auto leading-relaxed" style={{ color }}>
+        {codeExamples[lang](path, qs)}
       </pre>
     </div>
   );
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────
+function ParamTable({ params, color }) {
+  return (
+    <div className="rounded-lg overflow-hidden border border-white/6">
+      <div className="grid px-4 py-2 bg-[#0A0F14] border-b border-white/6 text-[10px] text-[#8A9BB0] tracking-widest font-mono"
+        style={{ gridTemplateColumns: "120px 70px 80px 1fr" }}>
+        <span>PARAMETER</span><span>TYPE</span><span>REQUIRED</span><span>DESCRIPTION</span>
+      </div>
+      {params.map((p, i) => (
+        <div key={i} className="grid px-4 py-3 items-center"
+          style={{
+            gridTemplateColumns: "120px 70px 80px 1fr",
+            background: i % 2 === 0 ? "#0D1117" : "#0A0F14",
+            borderBottom: i < params.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+          }}>
+          <code className="text-xs font-mono" style={{ color }}>{p.name}</code>
+          <span className="text-xs text-[#8A9BB0] font-mono">{p.type}</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded font-mono w-fit border"
+            style={{
+              background: p.required ? "rgba(255,107,53,0.08)" : "rgba(255,255,255,0.04)",
+              color: p.required ? "#FF6B35" : "#8A9BB0",
+              borderColor: p.required ? "rgba(255,107,53,0.2)" : "rgba(255,255,255,0.08)",
+            }}>
+            {p.required ? "required" : "optional"}
+          </span>
+          <span className="text-xs text-[#8A9BB0]">{p.desc}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ResponseBlock({ code, label, onCopy, copied, copyId }) {
+  return (
+    <div className="rounded-lg overflow-hidden border border-white/6 bg-[#0D1117]">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/6">
+        <span className="text-[11px] text-[#8A9BB0] font-mono">{label}</span>
+        <button onClick={() => onCopy(code, copyId)}
+          className="text-[11px] font-mono bg-transparent border-none cursor-pointer"
+          style={{ color: copied === copyId ? "#00E5A0" : "#8A9BB0" }}>
+          {copied === copyId ? "✓ Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="p-4 m-0 text-xs text-[#A8B8CC] font-mono overflow-x-auto leading-relaxed">{code}</pre>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function DocsPage() {
   const [activeSection, setActiveSection] = useState("intro");
-  const [copied, setCopied] = useState("");
+  const [copied, setCopied]               = useState("");
   const observerRef = useRef();
 
   useEffect(() => {
     const sections = document.querySelectorAll("section[id]");
     observerRef.current = new IntersectionObserver(
-      entries => {
-        entries.forEach(e => {
-          if (e.isIntersecting) setActiveSection(e.target.id);
-        });
-      },
+      entries => entries.forEach(e => { if (e.isIntersecting) setActiveSection(e.target.id); }),
       { rootMargin: "-20% 0px -70% 0px" }
     );
     sections.forEach(s => observerRef.current.observe(s));
@@ -399,371 +688,406 @@ export default function DocsPage() {
   }
 
   const navItems = [
-    { id: "intro",       label: "Introduction",    icon: "◎" },
-    { id: "quickstart",  label: "Quick Start",      icon: "⚡" },
-    { id: "auth",        label: "Authentication",   icon: "🔑" },
-    { id: "passport",    label: "Passport API",     icon: "🛂" },
-    { id: "countries",   label: "Countries API",    icon: "🌍" },
-    { id: "embassies",   label: "Embassies API",    icon: "🏛" },
-    { id: "airports",    label: "Airports API",     icon: "✈️" },
-    { id: "suggest",     label: "Suggest API",      icon: "🔍" },
-    { id: "errors",      label: "Error Codes",      icon: "⚠️" },
-    { id: "visa-status", label: "Visa Status",      icon: "📋" },
-    { id: "limits",      label: "Rate Limits",      icon: "📊" },
+    { id: "intro",              label: "Introduction",       icon: "◎",  group: null },
+    { id: "quickstart",         label: "Quick Start",         icon: "⚡",  group: null },
+    { id: "auth",               label: "Authentication",      icon: "🔑",  group: null },
+    { id: "flow",               label: "How It Works",        icon: "🔄",  group: null },
+    { id: "passport",           label: "Passport API",        icon: "🛂",  group: "ENDPOINTS" },
+    { id: "countries",          label: "Countries API",       icon: "🌍",  group: null },
+    { id: "embassies",          label: "Embassies API",       icon: "🏛",  group: null },
+    { id: "airports",           label: "Airports API",        icon: "✈️",  group: null },
+    { id: "suggest",            label: "Suggest API",         icon: "🔍",  group: null },
+    { id: "vg-e-visa",          label: "e-Visa Guide",        icon: "💻",  group: "VISA GUIDES" },
+    { id: "vg-eta",             label: "ETA Guide",           icon: "📋",  group: null },
+    { id: "vg-visa-on-arrival", label: "Visa on Arrival",     icon: "✅",  group: null },
+    { id: "vg-no-admission",    label: "No Admission",        icon: "🚫",  group: null },
+    { id: "vg-visa-free",       label: "Visa Free",           icon: "🆓",  group: null },
+    { id: "vg-visa-required",   label: "Visa Required",       icon: "🔴",  group: null },
+    { id: "errors",             label: "Error Codes",         icon: "⚠️",  group: "REFERENCE" },
+    { id: "visa-status",        label: "Visa Status Values",  icon: "📋",  group: null },
+    { id: "limits",             label: "Rate Limits",         icon: "📊",  group: null },
   ];
 
   return (
-    <div style={{
-      minHeight: "100vh", background: "#080C10",
-      color: "#E8EDF2", fontFamily: "'Courier New', monospace",
-      display: "flex", flexDirection: "column",
-    }}>
-      {/* Nav */}
-      <nav style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "16px 40px",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        position: "sticky", top: 0, zIndex: 50,
-        background: "rgba(8,12,16,0.97)", backdropFilter: "blur(12px)",
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{
-              width: 26, height: 26, borderRadius: 6,
-              background: "linear-gradient(135deg, #00E5A0, #00C2FF)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 13, fontWeight: 700, color: "#080C10",
-            }}>E</div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#E8EDF2" }}>
-              EAMMU <span style={{ color: "#00E5A0" }}>API</span>
-            </span>
+    <div className="min-h-screen bg-[#080C10] text-[#E8EDF2] font-mono flex flex-col">
+
+      {/* ── Navbar ── */}
+      <nav className="sticky top-0 z-50 flex items-center justify-between px-10 py-4 border-b border-white/6 bg-[#080C10]/97 backdrop-blur-xl">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="no-underline flex items-center gap-2">
+            <div className="w-7 h-7 rounded-md bg-gradient-to-br from-[#00E5A0] to-[#00C2FF] flex items-center justify-center text-sm font-bold text-[#080C10]">E</div>
+            <span className="text-sm font-semibold">EAMMU <span className="text-[#00E5A0]">API</span></span>
           </Link>
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 16 }}>/</span>
-          <span style={{ fontSize: 13, color: "#8A9BB0" }}>Documentation</span>
-          <span style={{
-            fontSize: 10, padding: "2px 8px", borderRadius: 4,
-            background: "rgba(0,229,160,0.08)", border: "1px solid rgba(0,229,160,0.2)",
-            color: "#00E5A0", letterSpacing: "0.08em",
-          }}>v1</span>
+          <span className="text-white/15 text-base">/</span>
+          <span className="text-sm text-[#8A9BB0]">Documentation</span>
+          <span className="text-[10px] px-2 py-0.5 rounded border bg-[#00E5A0]/8 border-[#00E5A0]/20 text-[#00E5A0] tracking-widest">v1</span>
+          <span className="text-[10px] px-2 py-0.5 rounded border bg-[#A855F7]/10 border-[#A855F7]/25 text-[#A855F7] tracking-widest animate-pulse">✦ VISA GUIDES NEW</span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link href="/" style={{ padding: "7px 14px", borderRadius: 6, fontSize: 12, color: "#8A9BB0", textDecoration: "none" }}>
-            ← Home
-          </Link>
-          <Link href="/login" style={{
-            padding: "7px 16px", borderRadius: 6, fontSize: 12,
-            background: "#00E5A0", color: "#080C10", textDecoration: "none", fontWeight: 600,
-          }}>Get API Key →</Link>
+        <div className="flex gap-2">
+          <Link href="/" className="px-3 py-1.5 rounded-md text-xs text-[#8A9BB0] no-underline hover:text-[#E8EDF2] transition-colors">← Home</Link>
+          <Link href="/login" className="px-4 py-1.5 rounded-md text-xs bg-[#00E5A0] text-[#080C10] no-underline font-bold hover:opacity-90 transition-opacity">Get API Key →</Link>
         </div>
       </nav>
 
-      <div style={{ display: "flex", flex: 1, maxWidth: 1200, margin: "0 auto", width: "100%", padding: "0 24px" }}>
+      <div className="flex flex-1 max-w-[1200px] mx-auto w-full px-6">
 
-        {/* Sidebar */}
-        <aside style={{
-          width: 220, flexShrink: 0, padding: "32px 0",
-          position: "sticky", top: 57, height: "calc(100vh - 57px)",
-          overflowY: "auto",
-        }}>
-          <div style={{ fontSize: 10, color: "#8A9BB0", letterSpacing: "0.1em", marginBottom: 10, paddingLeft: 12 }}>
-            REFERENCE
-          </div>
+        {/* ── Sidebar ── */}
+        <aside className="w-52 shrink-0 py-8 sticky top-[57px] h-[calc(100vh-57px)] overflow-y-auto">
           {navItems.map(item => (
-            <button key={item.id} onClick={() => {
-              document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }} style={{
-              display: "flex", alignItems: "center", gap: 8,
-              width: "100%", textAlign: "left",
-              padding: "8px 12px", borderRadius: 6, marginBottom: 1,
-              background: activeSection === item.id ? "rgba(0,229,160,0.07)" : "transparent",
-              color: activeSection === item.id ? "#00E5A0" : "#8A9BB0",
-              border: "none", cursor: "pointer", fontSize: 13,
-              fontFamily: "inherit",
-              borderLeft: activeSection === item.id ? "2px solid #00E5A0" : "2px solid transparent",
-              transition: "all 0.15s",
-            }}>
-              <span style={{ fontSize: 12 }}>{item.icon}</span>
-              {item.label}
-            </button>
+            <div key={item.id}>
+              {item.group && (
+                <div className="text-[10px] text-[#8A9BB0] tracking-widest mb-1 mt-5 pl-3">{item.group}</div>
+              )}
+              <button
+                onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-md mb-0.5 border-none cursor-pointer text-[13px] font-mono transition-all"
+                style={{
+                  background: activeSection === item.id ? "rgba(0,229,160,0.07)" : "transparent",
+                  color:      activeSection === item.id ? "#00E5A0" : "#8A9BB0",
+                  borderLeft: activeSection === item.id ? "2px solid #00E5A0" : "2px solid transparent",
+                }}>
+                <span className="text-xs">{item.icon}</span>
+                {item.label}
+              </button>
+            </div>
           ))}
 
-          {/* Status */}
-          <div style={{
-            margin: "24px 12px 0", padding: "12px",
-            background: "rgba(0,229,160,0.05)", border: "1px solid rgba(0,229,160,0.12)",
-            borderRadius: 8,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#00E5A0" }} />
-              <span style={{ fontSize: 11, color: "#00E5A0", fontWeight: 600 }}>All Systems Operational</span>
+          <div className="mx-3 mt-6 p-3 rounded-lg bg-[#00E5A0]/5 border border-[#00E5A0]/12">
+            <div className="flex items-center gap-1.5 mb-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#00E5A0]" />
+              <span className="text-[11px] text-[#00E5A0] font-bold">All Systems Operational</span>
             </div>
-            <a href="https://api.eammu.com/api/v1/countries?api_key=test" target="_blank"
-              style={{ fontSize: 10, color: "#8A9BB0", textDecoration: "none" }}>
-              Status page →
-            </a>
+            <a href="https://api.eammu.com" target="_blank" className="text-[10px] text-[#8A9BB0] no-underline hover:text-[#00E5A0] transition-colors">Status page →</a>
           </div>
         </aside>
 
-        {/* Content */}
-        <main style={{ flex: 1, padding: "40px 0 120px 56px", maxWidth: 820, minWidth: 0 }}>
+        {/* ── Content ── */}
+        <main className="flex-1 pl-14 py-10 pb-32 max-w-[820px] min-w-0">
 
           {/* ── Intro ── */}
-          <section id="intro" style={{ marginBottom: 72 }}>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "rgba(0,229,160,0.06)", border: "1px solid rgba(0,229,160,0.15)",
-              borderRadius: 100, padding: "4px 14px", fontSize: 11,
-              color: "#00E5A0", marginBottom: 20, letterSpacing: "0.08em",
-            }}>
+          <section id="intro" className="mb-20">
+            <div className="inline-flex items-center gap-2 bg-[#00E5A0]/6 border border-[#00E5A0]/15 rounded-full px-3.5 py-1 text-[11px] text-[#00E5A0] mb-5 tracking-widest">
               EAMMU TRAVEL API — VERSION 1.0
             </div>
-            <h1 style={{ fontSize: 36, fontWeight: 700, margin: "0 0 16px", fontFamily: "'Georgia',serif", lineHeight: 1.2 }}>
+            <h1 className="text-4xl font-bold mb-4" style={{ fontFamily: "Georgia, serif", lineHeight: 1.2 }}>
               API Documentation
             </h1>
-            <p style={{ fontSize: 15, color: "#8A9BB0", lineHeight: 1.9, margin: "0 0 28px", maxWidth: 600 }}>
-              The Eammu Travel API gives you real-time access to visa requirements,
-              passport index data, embassy locations, and airport information for
-              195+ countries. Built for travel apps, visa consultancies, and developers.
+            <p className="text-sm text-[#8A9BB0] leading-relaxed mb-7 max-w-xl">
+              The Eammu Travel API provides real-time visa requirements, passport index data,
+              embassy locations, airport information, and step-by-step visa guides for 195+ countries.
+              Built for travel apps, visa consultancies, and developers.
             </p>
 
-            {/* Stats row */}
-            <div style={{ display: "flex", gap: 0, marginBottom: 28 }}>
+            {/* Stats */}
+            <div className="flex mb-7 border border-white/6 rounded-lg overflow-hidden">
               {[
                 { v: "195+",  l: "Countries" },
-                { v: "3.9K+", l: "Airports" },
+                { v: "3.9K+", l: "Airports"  },
                 { v: "10K+",  l: "Embassies" },
-                { v: "99.9%", l: "Uptime" },
+                { v: "99.9%", l: "Uptime"    },
+                { v: "10",    l: "Endpoints" },
               ].map((s, i) => (
-                <div key={i} style={{
-                  padding: "16px 24px", textAlign: "center",
-                  borderRight: i < 3 ? "1px solid rgba(255,255,255,0.06)" : "none",
-                  background: "#0D1117",
-                  borderRadius: i === 0 ? "8px 0 0 8px" : i === 3 ? "0 8px 8px 0" : 0,
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  marginRight: i < 3 ? -1 : 0,
-                }}>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#00E5A0" }}>{s.v}</div>
-                  <div style={{ fontSize: 11, color: "#8A9BB0", marginTop: 2 }}>{s.l}</div>
+                <div key={i} className="flex-1 py-4 text-center bg-[#0D1117]"
+                  style={{ borderRight: i < 4 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
+                  <div className="text-xl font-bold text-[#00E5A0]">{s.v}</div>
+                  <div className="text-[11px] text-[#8A9BB0] mt-0.5">{s.l}</div>
                 </div>
               ))}
             </div>
 
-            {/* Base URL */}
-            <div style={{
-              background: "#0D1117", border: "1px solid rgba(0,229,160,0.15)",
-              borderRadius: 10, padding: "16px 20px",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-            }}>
-              <div>
-                <div style={{ fontSize: 11, color: "#8A9BB0", letterSpacing: "0.06em", marginBottom: 4 }}>BASE URL</div>
-                <code style={{ fontSize: 15, color: "#00E5A0" }}>{BASE_URL}</code>
+            {/* Changelog */}
+            <div className="mb-6 rounded-lg border border-[#A855F7]/20 bg-[#A855F7]/5 px-5 py-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-bold tracking-widest text-[#A855F7] border border-[#A855F7]/30 px-2 py-0.5 rounded">CHANGELOG</span>
+                <span className="text-[11px] text-[#8A9BB0]">Latest update</span>
               </div>
-              <button onClick={() => copy(BASE_URL, "baseurl")} style={{
-                background: "rgba(0,229,160,0.08)", border: "1px solid rgba(0,229,160,0.2)",
-                borderRadius: 6, padding: "6px 14px", fontSize: 11,
-                color: copied === "baseurl" ? "#00E5A0" : "#8A9BB0",
-                cursor: "pointer", fontFamily: "inherit",
-              }}>
+              <p className="text-sm text-[#E8EDF2] font-semibold mb-1">✦ Visa Guides are now live</p>
+              <p className="text-xs text-[#8A9BB0] leading-relaxed">
+                6 static guide pages under <code className="text-[#A855F7]">/api/v1/visa-guides/</code>.
+                The Passport API now returns a <code className="text-[#A855F7]">visa_guide_url</code> field
+                that links directly to the relevant guide based on visa status.
+              </p>
+            </div>
+
+            {/* Base URL */}
+            <div className="bg-[#0D1117] border border-[#00E5A0]/15 rounded-xl px-5 py-4 flex items-center justify-between">
+              <div>
+                <div className="text-[11px] text-[#8A9BB0] tracking-widest mb-1">BASE URL</div>
+                <code className="text-base text-[#00E5A0]">{BASE_URL}</code>
+              </div>
+              <button onClick={() => copy(BASE_URL, "baseurl")}
+                className="px-3.5 py-1.5 rounded-md text-[11px] cursor-pointer border font-mono bg-[#00E5A0]/8 border-[#00E5A0]/20"
+                style={{ color: copied === "baseurl" ? "#00E5A0" : "#8A9BB0" }}>
                 {copied === "baseurl" ? "✓ Copied" : "Copy"}
               </button>
             </div>
           </section>
 
           {/* ── Quick Start ── */}
-          <section id="quickstart" style={{ marginBottom: 72 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 600, margin: "0 0 8px", fontFamily: "'Georgia',serif" }}>
-              ⚡ Quick Start
-            </h2>
-            <p style={{ fontSize: 14, color: "#8A9BB0", lineHeight: 1.8, margin: "0 0 24px" }}>
-              Get your first API response in under 60 seconds.
-            </p>
+          <section id="quickstart" className="mb-20">
+            <h2 className="text-2xl font-semibold mb-2" style={{ fontFamily: "Georgia, serif" }}>⚡ Quick Start</h2>
+            <p className="text-sm text-[#8A9BB0] leading-relaxed mb-6">Get your first API response in under 60 seconds.</p>
             {[
-              {
-                step: "1",
-                title: "Register for a free API key",
-                desc: "No credit card required. 100 requests/day free forever.",
-                code: null,
-                link: { href: "/login", label: "Get Free API Key →" },
-              },
-              {
-                step: "2",
-                title: "Make your first request",
-                desc: "Check visa requirements for Bangladesh → Japan:",
-                code: `curl "${BASE_URL}/api/v1/passport?from=Bangladesh&to=Japan&api_key=eak_your_key"`,
-                link: null,
-              },
-              {
-                step: "3",
-                title: "Parse the response",
-                desc: "You'll get a JSON response with visa status and flags:",
-                code: `{\n  "visa_status": "visa required",\n  "from": { "name": "Bangladesh", "code": "bd" },\n  "to":   { "name": "Japan", "code": "jp" }\n}`,
-                link: null,
-              },
+              { step: "1", title: "Get a free API key", desc: "No credit card required. 100 requests/day free forever.", code: null, link: { href: "/login", label: "Get Free API Key →" } },
+              { step: "2", title: "Make your first request", desc: "Check visa requirements for Bangladesh → Japan:", code: `curl "${BASE_URL}/api/v1/passport?from=Bangladesh&to=Japan&api_key=eak_your_key"`, link: null },
+              { step: "3", title: "Read the response", desc: "You'll get visa_status and a visa_guide_url ready to use:", code: `{\n  "visa_status": "e-visa",\n  "visa_guide_url": "https://api.eammu.com/api/v1/visa-guides/e-visa",\n  "from": { "name": "Bangladesh", "code": "bd" },\n  "to":   { "name": "Turkey",     "code": "tr" }\n}`, link: null },
+              { step: "4", title: "Redirect to the guide", desc: "Use visa_guide_url to show a full step-by-step visa guide to your user. The guide URL already encodes the visa type — no extra param needed.", code: null, link: null },
             ].map((s, i) => (
-              <div key={i} style={{ display: "flex", gap: 20, marginBottom: 24 }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
-                  background: "rgba(0,229,160,0.1)", border: "1px solid rgba(0,229,160,0.2)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 13, fontWeight: 700, color: "#00E5A0",
-                }}>{s.step}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 6, color: "#E8EDF2" }}>{s.title}</div>
-                  <div style={{ fontSize: 13, color: "#8A9BB0", marginBottom: s.code ? 10 : 0 }}>{s.desc}</div>
-                  {s.code && (
-                    <pre style={{
-                      background: "#0D1117", border: "1px solid rgba(255,255,255,0.06)",
-                      borderRadius: 8, padding: "12px 16px", margin: 0,
-                      fontSize: 12, color: "#00E5A0", overflowX: "auto",
-                    }}>{s.code}</pre>
-                  )}
-                  {s.link && (
-                    <Link href={s.link.href} style={{
-                      display: "inline-block", marginTop: 10,
-                      padding: "8px 18px", borderRadius: 6, fontSize: 12,
-                      background: "#00E5A0", color: "#080C10",
-                      textDecoration: "none", fontWeight: 600,
-                    }}>{s.link.label}</Link>
-                  )}
+              <div key={i} className="flex gap-5 mb-6">
+                <div className="w-8 h-8 rounded-full shrink-0 bg-[#00E5A0]/10 border border-[#00E5A0]/20 flex items-center justify-center text-[13px] font-bold text-[#00E5A0]">{s.step}</div>
+                <div className="flex-1">
+                  <div className="text-sm font-medium mb-1.5 text-[#E8EDF2]">{s.title}</div>
+                  <div className="text-xs text-[#8A9BB0] mb-2">{s.desc}</div>
+                  {s.code && <pre className="bg-[#0D1117] border border-white/6 rounded-lg px-4 py-3 m-0 text-xs text-[#00E5A0] font-mono overflow-x-auto">{s.code}</pre>}
+                  {s.link && <Link href={s.link.href} className="inline-block mt-2.5 px-4 py-2 rounded-md text-xs bg-[#00E5A0] text-[#080C10] no-underline font-bold">{s.link.label}</Link>}
                 </div>
               </div>
             ))}
           </section>
 
           {/* ── Auth ── */}
-          <section id="auth" style={{ marginBottom: 72 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 600, margin: "0 0 8px", fontFamily: "'Georgia',serif" }}>
-              🔑 Authentication
-            </h2>
-            <p style={{ fontSize: 14, color: "#8A9BB0", lineHeight: 1.8, margin: "0 0 20px" }}>
-              Every request requires an API key. Pass it as a header (recommended) or query parameter.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+          <section id="auth" className="mb-20">
+            <h2 className="text-2xl font-semibold mb-2" style={{ fontFamily: "Georgia, serif" }}>🔑 Authentication</h2>
+            <p className="text-sm text-[#8A9BB0] leading-relaxed mb-5">Every request requires an API key. Pass it as a header (recommended) or query parameter.</p>
+            <div className="flex flex-col gap-3 mb-5">
               {[
                 { label: "Header — Recommended", code: `x-api-key: eak_your_key`, color: "#00E5A0" },
                 { label: "Query Parameter",       code: `?api_key=eak_your_key`,  color: "#00C2FF" },
               ].map((item, i) => (
-                <div key={i} style={{
-                  background: "#0D1117", border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 8, overflow: "hidden",
-                }}>
-                  <div style={{
-                    padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)",
-                    fontSize: 11, color: "#8A9BB0", letterSpacing: "0.06em",
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                  }}>
-                    <span>{item.label}</span>
-                    <button onClick={() => copy(item.code, item.label)} style={{
-                      background: "none", border: "none",
-                      color: copied === item.label ? "#00E5A0" : "#8A9BB0",
-                      cursor: "pointer", fontSize: 11, fontFamily: "inherit",
-                    }}>
+                <div key={i} className="rounded-lg overflow-hidden border border-white/6 bg-[#0D1117]">
+                  <div className="flex items-center justify-between px-4 py-2 border-b border-white/6">
+                    <span className="text-[11px] text-[#8A9BB0] tracking-wider font-mono">{item.label}</span>
+                    <button onClick={() => copy(item.code, item.label)} className="text-[11px] font-mono bg-transparent border-none cursor-pointer"
+                      style={{ color: copied === item.label ? "#00E5A0" : "#8A9BB0" }}>
                       {copied === item.label ? "✓ Copied" : "Copy"}
                     </button>
                   </div>
-                  <pre style={{ padding: "12px 16px", margin: 0, fontSize: 13, color: item.color }}>
-                    {item.code}
-                  </pre>
+                  <pre className="px-4 py-3 m-0 text-sm font-mono" style={{ color: item.color }}>{item.code}</pre>
                 </div>
               ))}
             </div>
-            <div style={{
-              background: "rgba(254,188,46,0.05)", border: "1px solid rgba(254,188,46,0.15)",
-              borderRadius: 8, padding: "12px 16px", fontSize: 13, color: "#FEBC2E",
-            }}>
+            <div className="bg-[#FEBC2E]/5 border border-[#FEBC2E]/15 rounded-lg px-4 py-3 text-xs text-[#FEBC2E] font-mono">
               ⚠️ Never expose your API key in client-side code. Use server-side routes or environment variables.
             </div>
           </section>
 
-          {/* ── Endpoints ── */}
-          {endpoints.map(ep => (
-            <section key={ep.id} id={ep.id} style={{ marginBottom: 80 }}>
-              {/* Header */}
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                    <span style={{
-                      fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
-                      background: `${ep.color}15`, color: ep.color,
-                      border: `1px solid ${ep.color}25`,
-                      padding: "3px 8px", borderRadius: 4,
-                    }}>{ep.method}</span>
-                    <span style={{
-                      fontSize: 10, letterSpacing: "0.08em",
-                      background: "rgba(255,255,255,0.04)", color: "#8A9BB0",
-                      border: "1px solid rgba(255,255,255,0.08)",
-                      padding: "3px 8px", borderRadius: 4,
-                    }}>{ep.badge}</span>
-                  </div>
-                  <code style={{ fontSize: 18, color: "#E8EDF2", letterSpacing: "-0.01em" }}>{ep.path}</code>
+          {/* ── How It Works ── */}
+          <section id="flow" className="mb-20">
+            <h2 className="text-2xl font-semibold mb-2" style={{ fontFamily: "Georgia, serif" }}>🔄 How It Works</h2>
+            <p className="text-sm text-[#8A9BB0] leading-relaxed mb-6">
+              The passport and visa-guides endpoints are designed to work together in a two-step flow.
+              Start with the Passport API to get visa requirements, then use the returned
+              <code className="text-[#00E5A0] mx-1">visa_guide_url</code>
+              to show users a full guide for their specific visa type.
+            </p>
+
+            {/* Flow diagram */}
+            <div className="relative mb-8">
+              {/* Step 1 */}
+              <div className="flex gap-4 mb-3">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-[#00E5A0]/10 border border-[#00E5A0]/30 flex items-center justify-center text-xs font-bold text-[#00E5A0] shrink-0">1</div>
+                  <div className="w-px flex-1 bg-[#00E5A0]/20 mt-1" style={{ minHeight: 24 }} />
+                </div>
+                <div className="flex-1 pb-4">
+                  <div className="text-sm font-semibold text-[#E8EDF2] mb-1">User selects passport + destination</div>
+                  <div className="text-xs text-[#8A9BB0] mb-2">Your app calls the Passport API with <code className="text-[#00E5A0]">?from=</code> and <code className="text-[#00E5A0]">?to=</code></div>
+                  <pre className="bg-[#0D1117] border border-white/6 rounded-lg px-4 py-2.5 m-0 text-xs text-[#00E5A0] font-mono">
+GET /api/v1/passport?from=Bangladesh&to=Turkey&api_key=eak_…</pre>
                 </div>
               </div>
 
-              <p style={{ fontSize: 14, color: "#8A9BB0", lineHeight: 1.8, margin: "0 0 24px", maxWidth: 580 }}>
-                {ep.desc}
-              </p>
-
-              {/* Parameters table */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 11, color: "#8A9BB0", letterSpacing: "0.08em", marginBottom: 10 }}>
-                  PARAMETERS
+              {/* Step 2 */}
+              <div className="flex gap-4 mb-3">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-[#00C2FF]/10 border border-[#00C2FF]/30 flex items-center justify-center text-xs font-bold text-[#00C2FF] shrink-0">2</div>
+                  <div className="w-px flex-1 bg-[#00C2FF]/20 mt-1" style={{ minHeight: 24 }} />
                 </div>
-                <div style={{ border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, overflow: "hidden" }}>
-                  <div style={{
-                    display: "grid", gridTemplateColumns: "120px 70px 60px 1fr",
-                    padding: "8px 16px", background: "#0A0F14",
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
-                    fontSize: 10, color: "#8A9BB0", letterSpacing: "0.06em",
+                <div className="flex-1 pb-4">
+                  <div className="text-sm font-semibold text-[#E8EDF2] mb-1">API returns visa_status + visa_guide_url</div>
+                  <div className="text-xs text-[#8A9BB0] mb-2">The response tells you the visa type and gives you the exact guide URL to use.</div>
+                  <pre className="bg-[#0D1117] border border-white/6 rounded-lg px-4 py-2.5 m-0 text-xs font-mono text-[#A8B8CC]">
+{`{
+  "visa_status":    "e-visa",
+  "visa_guide_url": "https://api.eammu.com/api/v1/visa-guides/e-visa"
+}`}</pre>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex gap-4 mb-3">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-[#A855F7]/10 border border-[#A855F7]/30 flex items-center justify-center text-xs font-bold text-[#A855F7] shrink-0">3</div>
+                  <div className="w-px flex-1 bg-[#A855F7]/20 mt-1" style={{ minHeight: 24 }} />
+                </div>
+                <div className="flex-1 pb-4">
+                  <div className="text-sm font-semibold text-[#E8EDF2] mb-1">Your app redirects to the guide page</div>
+                  <div className="text-xs text-[#8A9BB0] mb-2">
+                    Redirect the user to the visa guide URL — either as an API call (to render your own UI) or directly as a page in your app at
+                    <code className="text-[#A855F7] mx-1">yourapp.com/visa-guides/e-visa</code>.
+                  </div>
+                  <pre className="bg-[#0D1117] border border-white/6 rounded-lg px-4 py-2.5 m-0 text-xs text-[#A855F7] font-mono">
+GET /api/v1/visa-guides/e-visa   → static JSON guide</pre>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-[#FEBC2E]/10 border border-[#FEBC2E]/30 flex items-center justify-center text-xs font-bold text-[#FEBC2E] shrink-0">4</div>
+                </div>
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-[#E8EDF2] mb-1">User sees full step-by-step visa guide</div>
+                  <div className="text-xs text-[#8A9BB0]">
+                    The guide returns structured JSON: requirements checklist, step-by-step process, fees, processing time, tips, and related links.
+                    Render it however suits your UI.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Visa guide URL map */}
+            <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">VISA STATUS → GUIDE URL MAPPING</div>
+            <div className="rounded-lg overflow-hidden border border-white/6">
+              <div className="grid px-4 py-2 bg-[#0A0F14] border-b border-white/6 text-[10px] text-[#8A9BB0] tracking-widest font-mono"
+                style={{ gridTemplateColumns: "160px 1fr" }}>
+                <span>visa_status VALUE</span><span>visa_guide_url</span>
+              </div>
+              {[
+                { status: "visa required",   slug: "visa-required",   color: "#FF6B35" },
+                { status: "e-visa",          slug: "e-visa",          color: "#00C2FF" },
+                { status: "visa on arrival", slug: "visa-on-arrival", color: "#00E5A0" },
+                { status: "eta",             slug: "eta",             color: "#A855F7" },
+                { status: "no admission",    slug: "no-admission",    color: "#FF3B5C" },
+                { status: "30 / 60 / 90…",  slug: null,              color: "#FEBC2E", note: "null — visa-free has no guide URL" },
+                { status: "not_applicable",  slug: null,              color: "#8A9BB0", note: "null — same country / territory" },
+              ].map((r, i) => (
+                <div key={i} className="grid px-4 py-2.5 items-center"
+                  style={{
+                    gridTemplateColumns: "160px 1fr",
+                    background: i % 2 === 0 ? "#0D1117" : "#0A0F14",
+                    borderBottom: i < 6 ? "1px solid rgba(255,255,255,0.04)" : "none",
                   }}>
-                    <span>PARAMETER</span><span>TYPE</span><span>REQUIRED</span><span>DESCRIPTION</span>
-                  </div>
-                  {ep.params.map((p, i) => (
-                    <div key={i} style={{
-                      display: "grid", gridTemplateColumns: "120px 70px 60px 1fr",
-                      gap: 0, padding: "12px 16px",
-                      borderBottom: i < ep.params.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
-                      background: i % 2 === 0 ? "#0D1117" : "#0A0F14",
-                      alignItems: "center",
-                    }}>
-                      <code style={{ fontSize: 12, color: ep.color }}>{p.name}</code>
-                      <span style={{ fontSize: 11, color: "#8A9BB0" }}>{p.type}</span>
-                      <span style={{
-                        fontSize: 10, padding: "2px 6px", borderRadius: 3,
-                        background: p.required ? "rgba(255,107,53,0.08)" : "rgba(255,255,255,0.04)",
-                        color: p.required ? "#FF6B35" : "#8A9BB0",
-                        border: `1px solid ${p.required ? "rgba(255,107,53,0.2)" : "rgba(255,255,255,0.08)"}`,
-                        width: "fit-content",
-                      }}>
-                        {p.required ? "required" : "optional"}
-                      </span>
-                      <span style={{ fontSize: 12, color: "#8A9BB0" }}>{p.desc}</span>
-                    </div>
-                  ))}
+                  <code className="text-xs font-mono" style={{ color: r.color }}>{r.status}</code>
+                  {r.slug
+                    ? <code className="text-xs font-mono text-[#8A9BB0]">{BASE_URL}/api/v1/visa-guides/{r.slug}</code>
+                    : <span className="text-xs text-[#8A9BB0] italic">{r.note}</span>
+                  }
                 </div>
+              ))}
+            </div>
+          </section>
+
+          {/* ── Passport API ── */}
+          <section id="passport" className="mb-20">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-bold tracking-widest px-2 py-1 rounded font-mono border bg-[#00E5A0]/15 text-[#00E5A0] border-[#00E5A0]/30">GET</span>
+              <span className="text-[10px] tracking-widest px-2 py-1 rounded font-mono border border-white/8 bg-white/4 text-[#8A9BB0]">TRAVEL</span>
+            </div>
+            <code className="text-lg text-[#E8EDF2] font-mono tracking-tight mb-3 block">{passportEndpoint.path}</code>
+            <p className="text-sm text-[#8A9BB0] leading-relaxed mb-6 max-w-xl">{passportEndpoint.desc}</p>
+
+            <div className="mb-6">
+              <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">PARAMETERS</div>
+              <ParamTable params={passportEndpoint.params} color="#00E5A0" />
+            </div>
+
+            {/* Example URLs */}
+            <div className="mb-6">
+              <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">EXAMPLE URLS</div>
+              <div className="flex flex-col gap-2">
+                {passportEndpoint.examples.map((ex, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-md bg-[#0D1117] border border-white/6">
+                    <div>
+                      <div className="text-[10px] text-[#8A9BB0] mb-1 font-mono">{ex.label}</div>
+                      <code className="text-[11px] font-mono text-[#00E5A0] break-all">{BASE_URL}{ex.url}</code>
+                    </div>
+                    <button onClick={() => copy(`${BASE_URL}${ex.url}`, ex.label)}
+                      className="shrink-0 text-[10px] font-mono bg-transparent border-none cursor-pointer"
+                      style={{ color: copied === ex.label ? "#00E5A0" : "#8A9BB0" }}>
+                      {copied === ex.label ? "✓" : "Copy"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Code examples */}
+            <div className="mb-6">
+              <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">CODE EXAMPLES</div>
+              <CodeBlock
+                path={passportEndpoint.path}
+                qs="from=Bangladesh&to=Japan&api_key=eak_your_key"
+                color="#00E5A0"
+              />
+            </div>
+
+            {/* Two response tabs */}
+            <div className="mb-6">
+              <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-3">RESPONSE SCHEMA</div>
+              <PassportResponseTabs
+                responseSingle={passportEndpoint.responseSingle}
+                responseAll={passportEndpoint.responseAll}
+                copied={copied}
+                onCopy={copy}
+              />
+            </div>
+
+            {/* Response headers */}
+            <div className="mb-6">
+              <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">RESPONSE HEADERS</div>
+              <div className="rounded-lg overflow-hidden border border-white/6">
+                {[
+                  { h: "X-RateLimit-Remaining", v: "Number of requests remaining in the current period" },
+                  { h: "X-Plan",                v: "Your current plan: free | pro | enterprise" },
+                ].map((r, i) => (
+                  <div key={i} className="flex gap-6 px-4 py-3 items-center"
+                    style={{ background: i % 2 === 0 ? "#0D1117" : "#0A0F14", borderBottom: i === 0 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <code className="text-xs font-mono text-[#00C2FF] min-w-[220px]">{r.h}</code>
+                    <span className="text-xs text-[#8A9BB0]">{r.v}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Playground */}
+            <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono">TRY IT LIVE</div>
+            <Playground
+              path={passportEndpoint.path}
+              params={passportEndpoint.params}
+              playground={passportEndpoint.playground}
+              color="#00E5A0"
+            />
+          </section>
+
+          {/* ── Other Endpoints ── */}
+          {otherEndpoints.map(ep => (
+            <section key={ep.id} id={ep.id} className="mb-20">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-bold tracking-widest px-2 py-1 rounded font-mono border"
+                  style={{ background: `${ep.color}15`, color: ep.color, borderColor: `${ep.color}30` }}>GET</span>
+                <span className="text-[10px] tracking-widest px-2 py-1 rounded font-mono border border-white/8 bg-white/4 text-[#8A9BB0]">{ep.badge}</span>
+              </div>
+              <code className="text-lg text-[#E8EDF2] font-mono tracking-tight mb-3 block">{ep.path}</code>
+              <p className="text-sm text-[#8A9BB0] leading-relaxed mb-6 max-w-xl">{ep.desc}</p>
+
+              <div className="mb-6">
+                <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">PARAMETERS</div>
+                <ParamTable params={ep.params} color={ep.color} />
               </div>
 
-              {/* Example URLs */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 11, color: "#8A9BB0", letterSpacing: "0.08em", marginBottom: 10 }}>
-                  EXAMPLE URLS
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div className="mb-6">
+                <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">EXAMPLE URLS</div>
+                <div className="flex flex-col gap-2">
                   {ep.examples.map((ex, i) => (
-                    <div key={i} style={{
-                      background: "#0D1117", border: "1px solid rgba(255,255,255,0.06)",
-                      borderRadius: 6, padding: "10px 14px",
-                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-                    }}>
+                    <div key={i} className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-md bg-[#0D1117] border border-white/6">
                       <div>
-                        <div style={{ fontSize: 10, color: "#8A9BB0", marginBottom: 4 }}>{ex.label}</div>
-                        <code style={{ fontSize: 11, color: ep.color, wordBreak: "break-all" }}>
-                          {BASE_URL}{ex.url}
-                        </code>
+                        <div className="text-[10px] text-[#8A9BB0] mb-1 font-mono">{ex.label}</div>
+                        <code className="text-[11px] font-mono break-all" style={{ color: ep.color }}>{BASE_URL}{ex.url}</code>
                       </div>
-                      <button onClick={() => copy(`${BASE_URL}${ex.url}`, ex.label)} style={{
-                        background: "none", border: "none", color: copied === ex.label ? "#00E5A0" : "#8A9BB0",
-                        cursor: "pointer", fontSize: 10, fontFamily: "inherit", flexShrink: 0,
-                      }}>
+                      <button onClick={() => copy(`${BASE_URL}${ex.url}`, ex.label)}
+                        className="shrink-0 text-[10px] font-mono bg-transparent border-none cursor-pointer"
+                        style={{ color: copied === ex.label ? "#00E5A0" : "#8A9BB0" }}>
                         {copied === ex.label ? "✓" : "Copy"}
                       </button>
                     </div>
@@ -771,105 +1095,143 @@ export default function DocsPage() {
                 </div>
               </div>
 
-              {/* Code examples */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 11, color: "#8A9BB0", letterSpacing: "0.08em", marginBottom: 10 }}>
-                  CODE EXAMPLES
+              <div className="mb-6">
+                <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">CODE EXAMPLES</div>
+                <CodeBlock
+                  path={ep.path}
+                  qs={new URLSearchParams({ ...ep.playground, api_key: "eak_your_key" }).toString()}
+                  color={ep.color}
+                />
+              </div>
+
+              <div className="mb-6">
+                <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">RESPONSE SCHEMA</div>
+                <ResponseBlock code={ep.response} label="JSON" onCopy={copy} copied={copied} copyId={ep.id + "res"} />
+              </div>
+
+              <div>
+                <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono">TRY IT LIVE</div>
+                <Playground path={ep.path} params={ep.params} playground={ep.playground} color={ep.color} />
+              </div>
+            </section>
+          ))}
+
+          {/* ── Visa Guides Divider ── */}
+          <div className="mb-12 mt-4">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[#A855F7]/30 to-transparent" />
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-[#A855F7]/25 bg-[#A855F7]/8">
+                <span className="text-[10px] tracking-widest text-[#A855F7] font-bold">✦ NEW</span>
+                <span className="text-xs text-[#E8EDF2] font-semibold">Visa Guide Pages</span>
+              </div>
+              <div className="h-px flex-1 bg-gradient-to-l from-transparent via-[#A855F7]/30 to-transparent" />
+            </div>
+            <div className="rounded-lg border border-[#A855F7]/15 bg-[#A855F7]/5 px-5 py-4">
+              <p className="text-sm text-[#E8EDF2] font-semibold mb-2">Static guide endpoints — no parameters required</p>
+              <p className="text-xs text-[#8A9BB0] leading-relaxed">
+                These endpoints return static JSON content describing a visa type: requirements, step-by-step process, fees, processing time, and tips.
+                They are triggered automatically via the <code className="text-[#A855F7]">visa_guide_url</code> field
+                in Passport API responses. You can call them directly or render their content in your app's guide pages.
+                <span className="block mt-1.5">
+                  <strong className="text-[#E8EDF2]">No api_key required</strong> — these are public static info endpoints.
+                </span>
+              </p>
+            </div>
+          </div>
+
+          {/* ── Visa Guide Static Pages ── */}
+          {visaGuidePages.map(vg => (
+            <section key={vg.id} id={vg.id} className="mb-20">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] font-bold tracking-widest px-2 py-1 rounded font-mono border"
+                  style={{ background: `${vg.color}15`, color: vg.color, borderColor: `${vg.color}30` }}>GET</span>
+                <span className="text-[10px] tracking-widest px-2 py-1 rounded font-mono border border-white/8 bg-white/4 text-[#8A9BB0]">VISA GUIDE</span>
+                <span className="text-[10px] tracking-widest px-2 py-1 rounded font-mono border bg-[#A855F7]/10 border-[#A855F7]/20 text-[#A855F7]">STATIC</span>
+              </div>
+              <code className="text-lg text-[#E8EDF2] font-mono tracking-tight mb-3 block">{vg.path}</code>
+
+              <p className="text-sm text-[#8A9BB0] leading-relaxed mb-4 max-w-xl">{vg.desc}</p>
+
+              {/* Triggered by */}
+              <div className="mb-6 flex items-center gap-3 text-xs text-[#8A9BB0]">
+                <span className="font-mono tracking-wider text-[10px]">TRIGGERED WHEN</span>
+                <code className="px-2.5 py-1 rounded border font-mono text-[11px]"
+                  style={{ background: `${vg.color}10`, color: vg.color, borderColor: `${vg.color}25` }}>
+                  visa_status = "{vg.triggeredBy}"
+                </code>
+                <span>in Passport API response</span>
+              </div>
+
+              {/* No params notice */}
+              <div className="mb-6 flex items-center gap-2 text-xs text-[#8A9BB0] bg-[#0D1117] border border-white/6 rounded-lg px-4 py-3">
+                <span className="text-[#00E5A0]">✓</span>
+                <span>No parameters required. No API key needed. Call with a plain GET request.</span>
+              </div>
+
+              {/* Example URL */}
+              <div className="mb-6">
+                <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">EXAMPLE URL</div>
+                <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-md bg-[#0D1117] border border-white/6">
+                  <code className="text-[11px] font-mono break-all" style={{ color: vg.color }}>{BASE_URL}{vg.path}</code>
+                  <button onClick={() => copy(`${BASE_URL}${vg.path}`, vg.id + "url")}
+                    className="shrink-0 text-[10px] font-mono bg-transparent border-none cursor-pointer"
+                    style={{ color: copied === vg.id + "url" ? "#00E5A0" : "#8A9BB0" }}>
+                    {copied === vg.id + "url" ? "✓" : "Copy"}
+                  </button>
                 </div>
-                <CodeBlock ep={ep} />
+              </div>
+
+              {/* Code examples */}
+              <div className="mb-6">
+                <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">CODE EXAMPLES</div>
+                <CodeBlock path={vg.path} qs="" color={vg.color} />
               </div>
 
               {/* Response */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 11, color: "#8A9BB0", letterSpacing: "0.08em", marginBottom: 10 }}>
-                  RESPONSE SCHEMA
-                </div>
-                <div style={{
-                  background: "#0D1117", border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 8, overflow: "hidden",
-                }}>
-                  <div style={{
-                    padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)",
-                    fontSize: 11, color: "#8A9BB0", display: "flex", justifyContent: "space-between",
-                  }}>
-                    <span>JSON</span>
-                    <button onClick={() => copy(ep.response, ep.id + "res")} style={{
-                      background: "none", border: "none",
-                      color: copied === ep.id + "res" ? "#00E5A0" : "#8A9BB0",
-                      cursor: "pointer", fontSize: 11, fontFamily: "inherit",
-                    }}>
-                      {copied === ep.id + "res" ? "✓ Copied" : "Copy"}
-                    </button>
-                  </div>
-                  <pre style={{ padding: "16px", margin: 0, fontSize: 12, color: "#A8B8CC", overflowX: "auto", lineHeight: 1.8 }}>
-                    {ep.response}
-                  </pre>
-                </div>
-              </div>
-
-              {/* Live Playground */}
               <div>
-                <div style={{ fontSize: 11, color: "#8A9BB0", letterSpacing: "0.08em", marginBottom: 0 }}>
-                  TRY IT LIVE
-                </div>
-                <Playground ep={ep} />
+                <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">RESPONSE</div>
+                <ResponseBlock code={vg.response} label="JSON — static content" onCopy={copy} copied={copied} copyId={vg.id + "res"} />
               </div>
             </section>
           ))}
 
           {/* ── Errors ── */}
-          <section id="errors" style={{ marginBottom: 72 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 600, margin: "0 0 8px", fontFamily: "'Georgia',serif" }}>
-              ⚠️ Error Codes
-            </h2>
-            <p style={{ fontSize: 14, color: "#8A9BB0", lineHeight: 1.8, margin: "0 0 20px" }}>
-              All errors return JSON with an <code style={{ color: "#FF6B35" }}>error</code> field describing the issue.
+          <section id="errors" className="mb-20">
+            <h2 className="text-2xl font-semibold mb-2" style={{ fontFamily: "Georgia, serif" }}>⚠️ Error Codes</h2>
+            <p className="text-sm text-[#8A9BB0] leading-relaxed mb-5">
+              All errors return JSON with an <code className="text-[#FF6B35]">error</code> field.
             </p>
-            <div style={{ border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, overflow: "hidden" }}>
-              <div style={{
-                display: "grid", gridTemplateColumns: "60px 140px 1fr",
-                padding: "8px 16px", background: "#0A0F14",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
-                fontSize: 10, color: "#8A9BB0", letterSpacing: "0.06em",
-              }}>
+            <div className="rounded-lg overflow-hidden border border-white/6">
+              <div className="grid px-4 py-2 bg-[#0A0F14] border-b border-white/6 text-[10px] text-[#8A9BB0] tracking-widest font-mono"
+                style={{ gridTemplateColumns: "60px 140px 1fr" }}>
                 <span>CODE</span><span>STATUS</span><span>DESCRIPTION</span>
               </div>
               {[
-                { code: "400", text: "Bad Request",        desc: "Missing required parameter. Check ?from= and other required params." },
-                { code: "401", text: "Unauthorized",       desc: "Missing or invalid API key. Register at api.eammu.com/login." },
-                { code: "403", text: "Forbidden",          desc: "Account suspended. Contact support@eammu.com." },
-                { code: "404", text: "Not Found",          desc: "Country, passport, or resource not found. Check spelling." },
-                { code: "429", text: "Too Many Requests",  desc: "Rate limit reached. Upgrade plan or wait for daily reset." },
-                { code: "500", text: "Internal Error",     desc: "Server error. Try again or contact support." },
+                { code: "400", text: "Bad Request",       desc: "Missing required parameter. Example: ?from= is required on the passport endpoint." },
+                { code: "401", text: "Unauthorized",      desc: "Missing or invalid API key." },
+                { code: "403", text: "Forbidden",         desc: "Account suspended. Contact support@eammu.com." },
+                { code: "404", text: "Not Found",         desc: "Country or passport not found. Check spelling — names are case-insensitive." },
+                { code: "429", text: "Too Many Requests", desc: "Rate limit exceeded. Upgrade plan or wait for daily reset." },
+                { code: "500", text: "Internal Error",    desc: "Server error. Try again or contact support." },
               ].map((e, i) => (
-                <div key={i} style={{
-                  display: "grid", gridTemplateColumns: "60px 140px 1fr",
-                  padding: "12px 16px", alignItems: "center",
-                  borderBottom: i < 5 ? "1px solid rgba(255,255,255,0.04)" : "none",
-                  background: i % 2 === 0 ? "#0D1117" : "#0A0F14",
-                }}>
-                  <code style={{
-                    fontSize: 13, fontWeight: 700,
-                    color: e.code === "400" || e.code === "404" ? "#FF6B35"
-                      : e.code === "401" || e.code === "403" ? "#FF3B5C"
-                      : e.code === "429" ? "#FEBC2E" : "#8A9BB0",
-                  }}>{e.code}</code>
-                  <span style={{ fontSize: 12, color: "#E8EDF2" }}>{e.text}</span>
-                  <span style={{ fontSize: 12, color: "#8A9BB0" }}>{e.desc}</span>
+                <div key={i} className="grid px-4 py-3 items-center"
+                  style={{
+                    gridTemplateColumns: "60px 140px 1fr",
+                    background: i % 2 === 0 ? "#0D1117" : "#0A0F14",
+                    borderBottom: i < 5 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                  }}>
+                  <code className="text-sm font-bold font-mono"
+                    style={{ color: e.code === "400" || e.code === "404" ? "#FF6B35" : e.code === "401" || e.code === "403" ? "#FF3B5C" : e.code === "429" ? "#FEBC2E" : "#8A9BB0" }}>
+                    {e.code}
+                  </code>
+                  <span className="text-xs text-[#E8EDF2]">{e.text}</span>
+                  <span className="text-xs text-[#8A9BB0]">{e.desc}</span>
                 </div>
               ))}
             </div>
-
-            {/* Error response example */}
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 11, color: "#8A9BB0", letterSpacing: "0.06em", marginBottom: 8 }}>
-                ERROR RESPONSE FORMAT
-              </div>
-              <pre style={{
-                background: "#0D1117", border: "1px solid rgba(255,107,53,0.15)",
-                borderRadius: 8, padding: "14px 16px", margin: 0,
-                fontSize: 12, color: "#FF6B35", lineHeight: 1.8,
-              }}>
+            <div className="mt-4">
+              <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">ERROR RESPONSE FORMAT</div>
+              <pre className="bg-[#0D1117] border border-[#FF6B35]/15 rounded-lg px-4 py-3.5 m-0 text-xs text-[#FF6B35] font-mono leading-relaxed">
 {`{
   "error": "Passport 'xyz' not found"
 }`}
@@ -878,89 +1240,63 @@ export default function DocsPage() {
           </section>
 
           {/* ── Visa Status ── */}
-          <section id="visa-status" style={{ marginBottom: 72 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 600, margin: "0 0 8px", fontFamily: "'Georgia',serif" }}>
-              📋 Visa Status Values
-            </h2>
-            <p style={{ fontSize: 14, color: "#8A9BB0", lineHeight: 1.8, margin: "0 0 20px" }}>
-              The <code style={{ color: "#00E5A0" }}>visa_status</code> field returns one of these values:
+          <section id="visa-status" className="mb-20">
+            <h2 className="text-2xl font-semibold mb-2" style={{ fontFamily: "Georgia, serif" }}>📋 Visa Status Values</h2>
+            <p className="text-sm text-[#8A9BB0] leading-relaxed mb-5">
+              The <code className="text-[#00E5A0]">visa_status</code> field in Passport API responses is one of the following.
+              Numeric values (30, 60, 90…) indicate visa-free entry for that many days.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="flex flex-col gap-2">
               {visaStatuses.map((v, i) => (
-                <div key={i} style={{
-                  display: "flex", alignItems: "center", gap: 16,
-                  background: "#0D1117", border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 8, padding: "12px 16px",
-                }}>
-                  <span style={{ fontSize: 16, flexShrink: 0 }}>{v.icon}</span>
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 4,
-                    background: `${v.color}10`, color: v.color, border: `1px solid ${v.color}25`,
-                    minWidth: 140, textAlign: "center", flexShrink: 0,
-                  }}>
+                <div key={i} className="flex items-center gap-4 bg-[#0D1117] border border-white/6 rounded-lg px-4 py-3">
+                  <span className="text-base shrink-0">{v.icon}</span>
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded font-mono min-w-[140px] text-center shrink-0 border"
+                    style={{ background: `${v.color}10`, color: v.color, borderColor: `${v.color}25` }}>
                     {v.value}
                   </span>
-                  <span style={{ fontSize: 13, color: "#8A9BB0" }}>{v.desc}</span>
+                  <span className="text-xs text-[#8A9BB0]">{v.desc}</span>
                 </div>
               ))}
             </div>
           </section>
 
           {/* ── Rate Limits ── */}
-          <section id="limits" style={{ marginBottom: 72 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 600, margin: "0 0 8px", fontFamily: "'Georgia',serif" }}>
-              📊 Rate Limits
-            </h2>
-            <p style={{ fontSize: 14, color: "#8A9BB0", lineHeight: 1.8, margin: "0 0 24px" }}>
-              Rate limit info is returned in response headers on every request.
-            </p>
+          <section id="limits" className="mb-20">
+            <h2 className="text-2xl font-semibold mb-2" style={{ fontFamily: "Georgia, serif" }}>📊 Rate Limits</h2>
+            <p className="text-sm text-[#8A9BB0] leading-relaxed mb-6">Rate limit info is returned in response headers on every request.</p>
 
-            {/* Plans */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 24 }}>
+            <div className="grid grid-cols-3 gap-3 mb-6">
               {[
-                { name: "Free",       price: "$0",     req: "100 req/day",    color: "#8A9BB0" },
-                { name: "Pro",        price: "$9/mo",  req: "10,000 req/mo",  color: "#00E5A0", hot: true },
-                { name: "Enterprise", price: "Custom", req: "Unlimited",      color: "#A855F7" },
+                { name: "Free",       price: "$0",     req: "100 req/day",   color: "#8A9BB0", hot: false },
+                { name: "Pro",        price: "$9/mo",  req: "10,000 req/mo", color: "#00E5A0", hot: true  },
+                { name: "Enterprise", price: "Custom", req: "Unlimited",     color: "#A855F7", hot: false },
               ].map((p, i) => (
-                <div key={i} style={{
-                  background: p.hot ? "rgba(0,229,160,0.05)" : "#0D1117",
-                  border: `1px solid ${p.hot ? "rgba(0,229,160,0.2)" : "rgba(255,255,255,0.06)"}`,
-                  borderRadius: 10, padding: "20px",
-                }}>
-                  {p.hot && <div style={{ fontSize: 9, color: "#00E5A0", letterSpacing: "0.1em", marginBottom: 8 }}>MOST POPULAR</div>}
-                  <div style={{ fontSize: 20, fontWeight: 700, color: p.color, marginBottom: 2 }}>{p.price}</div>
-                  <div style={{ fontSize: 13, color: "#E8EDF2", marginBottom: 4 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: "#8A9BB0" }}>{p.req}</div>
+                <div key={i} className="rounded-xl p-5 border"
+                  style={{ background: p.hot ? "rgba(0,229,160,0.05)" : "#0D1117", borderColor: p.hot ? "rgba(0,229,160,0.2)" : "rgba(255,255,255,0.06)" }}>
+                  {p.hot && <div className="text-[9px] text-[#00E5A0] tracking-widest mb-2 font-mono">MOST POPULAR</div>}
+                  <div className="text-xl font-bold mb-1" style={{ color: p.color }}>{p.price}</div>
+                  <div className="text-sm text-[#E8EDF2] mb-1">{p.name}</div>
+                  <div className="text-xs text-[#8A9BB0]">{p.req}</div>
                 </div>
               ))}
             </div>
 
-            {/* Headers */}
-            <div style={{ fontSize: 11, color: "#8A9BB0", letterSpacing: "0.06em", marginBottom: 10 }}>
-              RATE LIMIT HEADERS
-            </div>
-            <div style={{ border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, overflow: "hidden" }}>
+            <div className="text-[11px] text-[#8A9BB0] tracking-widest font-mono mb-2">RATE LIMIT HEADERS</div>
+            <div className="rounded-lg overflow-hidden border border-white/6">
               {[
                 { header: "X-RateLimit-Remaining", desc: "Requests remaining in current period" },
-                { header: "X-Plan",                desc: "Your current plan (free / pro / enterprise)" },
+                { header: "X-Plan",                desc: "Your current plan: free | pro | enterprise" },
               ].map((h, i) => (
-                <div key={i} style={{
-                  display: "flex", gap: 24, padding: "12px 16px", alignItems: "center",
-                  borderBottom: i === 0 ? "1px solid rgba(255,255,255,0.04)" : "none",
-                  background: i % 2 === 0 ? "#0D1117" : "#0A0F14",
-                }}>
-                  <code style={{ fontSize: 12, color: "#00C2FF", minWidth: 200 }}>{h.header}</code>
-                  <span style={{ fontSize: 12, color: "#8A9BB0" }}>{h.desc}</span>
+                <div key={i} className="flex gap-6 px-4 py-3 items-center"
+                  style={{ background: i % 2 === 0 ? "#0D1117" : "#0A0F14", borderBottom: i === 0 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                  <code className="text-xs font-mono text-[#00C2FF] min-w-[200px]">{h.header}</code>
+                  <span className="text-xs text-[#8A9BB0]">{h.desc}</span>
                 </div>
               ))}
             </div>
 
-            <div style={{ marginTop: 16, textAlign: "center" }}>
-              <Link href="/login" style={{
-                display: "inline-block", padding: "10px 24px", borderRadius: 8,
-                background: "#00E5A0", color: "#080C10",
-                textDecoration: "none", fontSize: 13, fontWeight: 600,
-              }}>
+            <div className="mt-5 text-center">
+              <Link href="/login" className="inline-block px-6 py-2.5 rounded-lg bg-[#00E5A0] text-[#080C10] no-underline text-sm font-bold hover:opacity-90 transition-opacity">
                 Upgrade Plan →
               </Link>
             </div>
@@ -968,14 +1304,37 @@ export default function DocsPage() {
 
         </main>
       </div>
+    </div>
+  );
+}
 
-      <style>{`
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: #080C10; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
-        input:focus { border-color: rgba(0,229,160,0.3) !important; }
-      `}</style>
+// ─── Passport dual-response tabs ─────────────────────────────────────────────
+function PassportResponseTabs({ responseSingle, responseAll, copied, onCopy }) {
+  const [tab, setTab] = useState("single");
+  return (
+    <div className="rounded-lg overflow-hidden border border-white/6 bg-[#0D1117]">
+      <div className="flex items-center justify-between border-b border-white/6">
+        <div className="flex">
+          {[
+            { key: "single", label: "Single destination (?to= provided)" },
+            { key: "all",    label: "All destinations (no ?to=)" },
+          ].map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)}
+              className="px-4 py-2.5 text-[11px] font-mono tracking-wide border-none bg-transparent cursor-pointer transition-colors"
+              style={{ color: tab === t.key ? "#E8EDF2" : "#8A9BB0", borderBottom: tab === t.key ? "2px solid #00E5A0" : "2px solid transparent" }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <button onClick={() => onCopy(tab === "single" ? responseSingle : responseAll, "passport-" + tab)}
+          className="mr-4 text-[11px] font-mono bg-transparent border-none cursor-pointer"
+          style={{ color: copied === "passport-" + tab ? "#00E5A0" : "#8A9BB0" }}>
+          {copied === "passport-" + tab ? "✓ Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="p-4 m-0 text-xs text-[#A8B8CC] font-mono overflow-x-auto leading-relaxed max-h-[520px] overflow-y-auto">
+        {tab === "single" ? responseSingle : responseAll}
+      </pre>
     </div>
   );
 }
