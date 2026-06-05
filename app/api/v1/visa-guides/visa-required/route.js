@@ -10,7 +10,7 @@ export async function GET(request) {
   return NextResponse.json({
     visa_type:        "visa-required",
     label:            "Visa Required",
-    color:            "#FF6B35",
+    color:            "#FFE5A0",
     description:      "You must apply for a visa before traveling. Visit the embassy or consulate of your destination country.",
     fee:              "USD 30–200+ (varies by country and visa category)",
     processing_time:  "5–15 business days (varies by embassy)",
