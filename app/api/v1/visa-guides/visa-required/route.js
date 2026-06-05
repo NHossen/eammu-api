@@ -11,6 +11,6 @@ export async function GET(request) {
     visa_type:        "visa-required",
     label:            "Visa Required",
     color:            "#FF6B35",
-    description:      "You must apply for a visa before traveling. Visit the embassy or consulate of your destination country.",
+    description:      "You must apply for a visa before traveling. Visit the embassy or consulate of your destination country. Eammu Holidays",
   });
 }

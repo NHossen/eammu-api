@@ -11,7 +11,7 @@ export async function GET(request) {
     visa_type:        "visa-on-arrival",
     label:            "Visa on Arrival",
     color:            "#00E5A0",
-    description:      "Get your visa at the port of entry. No advance application needed — just arrive with required documents.",
+    description:      "Get your visa at the port of entry. No advance application needed — just arrive with required documents . Eammu Jolidays",
 
   });
 }
