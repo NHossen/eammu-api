@@ -45,36 +45,42 @@ export async function GET(request) {
   const allCountries = await db.collection("countries").find({}).toArray();
   const flagMap = {};
   allCountries.forEach((c) => {
-    flagMap[c.country?.toLowerCase()] = { flag: c.flag, code: c.code };
+    flagMap[c.country?.toLowerCase()] = {
+      flag:           c.flag           || null,
+      code:           c.code           || null,
+      passport_cover: c.passport_cover || null,  // ← NOW INCLUDED
+    };
   });
 
   const { _id, Passport, ...destinations } = visaDoc;
 
   // ── Single destination ──────────────────────────────────────
   if (to) {
-    const toKey     = Object.keys(destinations).find(k => k.toLowerCase() === to.toLowerCase());
-    const status    = toKey ? destinations[toKey] : undefined;
-    const toName    = toKey || to;
+    const toKey      = Object.keys(destinations).find(k => k.toLowerCase() === to.toLowerCase());
+    const status     = toKey ? destinations[toKey] : undefined;
+    const toName     = toKey || to;
 
     if (status === undefined) {
       return NextResponse.json({ error: `Destination '${to}' not found` }, { status: 404 });
     }
 
-    const fromInfo  = flagMap[from.toLowerCase()];
-    const toInfo    = flagMap[toName.toLowerCase()];
+    const fromInfo   = flagMap[from.toLowerCase()];
+    const toInfo     = flagMap[toName.toLowerCase()];
     const visaStatus = status === -1 ? "not_applicable" : status;
 
     return NextResponse.json(
       {
         from: {
-          name: from,
-          flag: fromInfo?.flag || null,
-          code: fromInfo?.code || null,
+          name:           from,
+          flag:           fromInfo?.flag           || null,
+          code:           fromInfo?.code           || null,
+          passport_cover: fromInfo?.passport_cover || null,  // ← NOW INCLUDED
         },
         to: {
-          name: toName,
-          flag: toInfo?.flag || null,
-          code: toInfo?.code || null,
+          name:           toName,
+          flag:           toInfo?.flag           || null,
+          code:           toInfo?.code           || null,
+          passport_cover: toInfo?.passport_cover || null,    // ← NOW INCLUDED
         },
         visa_status:    visaStatus,
         visa_guide_url: getGuideUrl(visaStatus),
@@ -94,8 +100,9 @@ export async function GET(request) {
     const visaStatus = status === -1 ? "not_applicable" : status;
     return {
       country,
-      flag:           info?.flag || null,
-      code:           info?.code || null,
+      flag:           info?.flag           || null,
+      code:           info?.code           || null,
+      passport_cover: info?.passport_cover || null,          // ← NOW INCLUDED
       visa_status:    visaStatus,
       visa_guide_url: getGuideUrl(visaStatus),
     };
@@ -113,9 +120,10 @@ export async function GET(request) {
 
   return NextResponse.json(
     {
-      passport: from,
-      flag:     flagMap[from.toLowerCase()]?.flag || null,
-      total:    result.length,
+      passport:       from,
+      flag:           flagMap[from.toLowerCase()]?.flag           || null,
+      passport_cover: flagMap[from.toLowerCase()]?.passport_cover || null,  // ← NOW INCLUDED
+      total:          result.length,
       summary: {
         visa_free:       grouped.visa_free.length,
         visa_on_arrival: grouped.visa_on_arrival.length,
