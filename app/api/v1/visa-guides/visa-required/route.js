@@ -9,8 +9,8 @@ export async function GET(request) {
 
   return NextResponse.json({
     visa_type: "visa-required",
-    label: "Visa Required",
-    color: "#FFE5A0",
+    label: "Visa Required (Sticker Visa)",
+    color: "#FF0000",
 
     // --- Core Description (targets: "what is visa required", "visa required meaning") ---
     description:
